@@ -33,7 +33,7 @@
             var date_format_2 = d3.time.format("%-m/%d/%y").parse;
             var date_format_year = d3.time.format("%Y").parse;
 
-
+            //Make sure numbers are read correctly
             data.forEach(function(d){
                 d['delay_change'] = parseFloat(d['delay_change']);
                 d['growth_rate'] = parseFloat(d['growth_rate']);
@@ -54,22 +54,24 @@
 
             d3.select("body")
                     .select("#header")
-                    .text("GDP Growth Has a Delayed Correlation with Airport Delay ");
+                    .text("The Great Recession Led To Lower Delays in Airports");
 
 
-
-            // Set up playground
+            //Load Growth Data
             d3.csv("data-draft-3/growth.csv", function(growth) {
 
+                //Make Sure Data Loads Correctly
                 growth.forEach(function(d) {
                     d["growth"] = parseFloat(d["growth"]);
                     d['date'] = date_format_2(d['date'])
                 });
 
+                //Set Scales
                 var x = d3.time.scale().range([0, width]);
                 var y0 = d3.scale.linear().range([height, 0]);
                 var y1 = d3.scale.linear().range([height, 0]);
 
+                //Set Axis
                 var xAxis = d3.svg.axis().scale(x)
                         .orient("bottom").ticks(10);
 
@@ -82,6 +84,7 @@
                         .orient("right").ticks(10)
                         .tickFormat(num_format);
 
+                //Group Dataset by year and return mean delay_percentage
                 var mean_by_year = d3.nest()
                         .key(function(d) {
                             return d['year'];
@@ -98,6 +101,7 @@
                         .entries(data);
 
 
+                //Make Value Lines
                 var valueline2 = d3.svg.line()
                         .x(function(d) {
                             var date = d3.time.month.offset(date_format_year(d['key']), 6);
@@ -115,7 +119,7 @@
 
 
 
-
+                //Start SVG
                 var svg = d3.select("body")
                         .append("svg")
                         .attr("width", width + margin.left + margin.right)
@@ -124,8 +128,8 @@
                         .attr("transform",
                                 "translate(" + margin.left + "," + margin.top + ")");
 
-                // Scale the range of the data
 
+                // Scale the range of the data
 
                 var min_delay_percentage = d3.min(data, function(d){
                     return d.delay_percentage;
@@ -143,22 +147,18 @@
                     return d.growth;
                 });
 
+
+                // Setup Axis Domain
+
                 x.domain(d3.extent(growth, function(d) { return d.date; }));
 
                 y0.domain([min_delay_percentage-.10, max_delay_percentage]);
 
-                y1.domain([min_growth-.05, max_growth+.2]);
-
-
-
-
-
+                y1.domain([min_growth-.025, max_growth+.15]);
+                
 
                 //draw playground
 
-//                svg.append("path")        // Add the valueline path.
-//                        .style("stroke", "red")
-//                        .attr("d", valueline(growth));
 
                 svg.append("g")            // Add the X Axis
                         .attr("class", "x axis")
@@ -177,28 +177,24 @@
                         .style("fill", "red")
                         .call(yAxisRight);
 
+                //Add All Paths
 
-//                svg.append("path")        // Add the valueline2 path.
-//                        .style("stroke", "steelblue")
-//                        .attr("d", valueline3(data));
-
-
-
-                svg.append("path")        // Add the valueline path.
+                svg.append("path")
                         .style('stroke', "red")
                         .attr("d", valueline(growth));
 
 
-                svg.append("path")        // Add the valueline2 path.
+                svg.append("path")
                         .style("stroke", "steelblue")
                         .style("stroke-opacity", "0.3")
                         .attr("d", valueline3(data));
 
-                svg.append("path")        // Add the valueline2 path.
+                svg.append("path")
                         .style("stroke", "steelblue")
                         .attr("d", valueline2(mean_by_year));
 
 
+                //Add Other Static Elements
 
                 svg.append("text")
                         .attr("transform", "rotate(-90)")
@@ -207,7 +203,7 @@
                         .attr("dy", "1em")
                         .style("text-anchor", "middle")
                         .style("fill", "steelblue")
-                        .text("Percent of Delayed Flights (%)");
+                        .text("Percent of Flights That Are Delayed (%)");
 
                 svg.append("text")
                         .attr("transform", "rotate(90)")
@@ -218,7 +214,7 @@
                         .style("fill", "red")
                         .text("GDP Growth (%)");
 
-                svg.append("text")      // text label for the x axis
+                svg.append("text")
                         .attr("x", 450 )
                         .attr("y", 500 )
                         .style("text-anchor", "middle")
@@ -332,25 +328,6 @@
 
 <h2 id="header">Major Airport Delay... Loading...</h2>
 
-<div id="buttons">
-</div>
-
-
-<!--Tooltip for airports-->
-<div id="tooltip" class="hidden">
-    <p><strong>Airport Name:</strong></p>
-    <p><span id="airport_name">Empty</span></p>
-    <p><strong>Total Number of Delays:</strong></p>
-    <p><span id="total">100</span></p>
-    <p><strong>Delay Compositions:</strong></p>
-    <p>
-        Carrier: <span id="carrier">100</span>,<br>
-        Weather: <span id="weather">100</span>,<br>
-        Airspace Control: <span id="nas">100</span>,<br>
-        Security: <span id="security">100</span>,<br>
-        Late Aircraft: <span id="late">100</span>
-    </p>
-</div>
 
 
 <!--Tooltip for GDP circles-->
