@@ -40,6 +40,7 @@
                 d['date'] = date_format(d['date']);
                 d['year'] = d["date"].getFullYear();
                 d['delay_percentage'] = parseFloat(d['delay_percentage']);
+//                d['arr_flights']  = parseInt(d['arr_flights'])
 
             });
 
@@ -48,7 +49,7 @@
 
             // Set up canvas
             "use strict";
-            var margin = {top: 40, right: 150, bottom: 100, left: 150},
+            var margin = {top: 40, right: 150, bottom: 50, left: 150},
                     width = 1200 - margin.left - margin.right,
                     height = 600 - margin.top - margin.bottom;
 
@@ -84,7 +85,7 @@
                         .orient("right").ticks(10)
                         .tickFormat(num_format);
 
-                //Group Dataset by year and return mean delay_percentage
+                //Group Dataset by year and return mean delay_percentage and total_flights
                 var mean_by_year = d3.nest()
                         .key(function(d) {
                             return d['year'];
@@ -96,10 +97,17 @@
                                 return d['delay_percentage']
                             });
 
-                            return {"delay_percentage" : delay_percentage}
+                            var total_flights = d3.sum(leaves, function(d){
+                                return d['arr_flights']
+                            });
+
+                            return {
+                                "delay_percentage" : delay_percentage,
+                                "total_flights": total_flights
+                            }
                         })
                         .entries(data);
-
+                debugger;
 
                 //Make Value Lines
                 var valueline2 = d3.svg.line()
@@ -120,7 +128,7 @@
 
 
                 //Start SVG
-                var svg = d3.select("body")
+                var svg = d3.select("#graph")
                         .append("svg")
                         .attr("width", width + margin.left + margin.right)
                         .attr("height", height + margin.top + margin.bottom)
@@ -155,7 +163,7 @@
                 y0.domain([min_delay_percentage-.10, max_delay_percentage]);
 
                 y1.domain([min_growth-.025, max_growth+.15]);
-                
+
 
                 //draw playground
 
@@ -216,7 +224,7 @@
 
                 svg.append("text")
                         .attr("x", 450 )
-                        .attr("y", 500 )
+                        .attr("y", 550 )
                         .style("text-anchor", "middle")
                         .text("Date (year)");
 
@@ -248,9 +256,9 @@
 
                 svg.append("text")
                         .attr("class", "Delay_text")
-                        .attr("x", 680)
+                        .attr("x", 670)
                         .attr("y", 34)
-                        .text("Percent Delay(Mean)");
+                        .text("Percent Delay (Mean)");
 
                 svg.append("line")
                         .attr("class", "Delay_line")
@@ -299,7 +307,7 @@
                         .attr("x1", x(d3.time.format("%y/%m/%d").parse("07/06/31")))
                         .attr("x2", x(d3.time.format("%y/%m/%d").parse("07/06/31")))
                         .attr("y1", 0)
-                        .attr("y2", 470)
+                        .attr("y2", 510)
                         .style("stroke", "black")
                         .style("stroke-dasharray", ("5, 5"))
                         .style("stroke-opacity", "0.3");
@@ -312,7 +320,68 @@
                         .attr("y2", 70)
                         .style("stroke", "red")
                         .style("stroke-width", "5")
-                        .style("stroke-dasharray", ("2, 2"))
+                        .style("stroke-dasharray", ("2, 2"));
+
+                svg.append("g")
+                        .selectAll(".growth_point")
+                        .data(growth)
+                        .enter()
+                        .append("circle")
+                        .attr("class", "growth_point")
+                        .attr("cx", function(d){ return x(d.date)})
+                        .attr("cy", function(d){ return y1(d.growth)})
+                        .attr("r", 4)
+                        .style("fill", "red")
+                        .on("mouseover", function(d){
+
+                            //Get this circle's x/y values, then augment for the tooltip
+                            var xPosition = parseFloat(d3.select(this).attr("cx")) + 170;
+                            var yPosition = parseFloat(d3.select(this).attr("cy")) + 50;
+
+                            //Update the tooltip position and value
+                            d3.select("#GDP-tooltip")
+                                    .style("left", xPosition + "px")
+                                    .style("top", yPosition + "px")
+                                    .select("#GDP_growth")
+                                    .text(num_format(d['growth']));
+                            //Show the tooltip
+                            d3.select("#GDP-tooltip").classed("hidden", false);
+
+                        })
+                        .on("mouseout", function(){d3.select("#GDP-tooltip").classed("hidden", true)});
+
+
+                svg.append("g")
+                        .selectAll(".delay_point")
+                        .data(mean_by_year)
+                        .enter()
+                        .append("circle")
+                        .attr("class", "delay_point")
+                        .attr("cx", function(d) {
+                            var date = d3.time.month.offset(date_format_year(d['key']), 6);
+                            return x(date) })
+                        .attr("cy", function(d){ return y0(d['values']['delay_percentage'])})
+                        .attr("r", 4)
+                        .style("fill", "steelblue")
+                        .on("mouseover", function(d){
+
+                            //Get this circle's x/y values, then augment for the tooltip
+                            var xPosition = parseFloat(d3.select(this).attr("cx")) + 170;
+                            var yPosition = parseFloat(d3.select(this).attr("cy")) + 50;
+
+                            //Update the tooltip position and value
+                            d3.select("#tooltip")
+                                    .style("left", xPosition + "px")
+                                    .style("top", yPosition + "px")
+                                    .select("#delayed_flight")
+                                    .text(num_format(d.values['delay_percentage']));
+                            //Show the tooltip
+                            d3.select("#tooltip").classed("hidden", false);
+
+                        })
+                        .on("mouseout", function(){d3.select("#tooltip").classed("hidden", true)});
+
+
 
 
 
@@ -326,19 +395,16 @@
 </head>
 <body>
 
-<h2 id="header">Major Airport Delay... Loading...</h2>
-
-
-
-<!--Tooltip for GDP circles-->
-
+<h2 id="header">Major Airport Delays... Loading...</h2>
 <div id="GDP-tooltip" class="hidden">
-    <p>
-        <strong>Growth Rate: </strong><br>
-        <span id="growth_number">100</span>
-    </p>
+    <p><strong>GDP Growth Rate:</strong></p>
+    <p><span id="GDP_growth">Empty</span></p>
 </div>
+<div id="tooltip" class="hidden">
+    <p><strong>Percent of Flights Delayed:</strong></p>
+    <p><span id="delayed_flight">Empty</span></p>
 
+</div>
 <script type="text/javascript">
 
     /*
@@ -347,5 +413,12 @@
 
     d3.csv("data-draft-3/cleaned_with_size.csv", draw);
 </script>
+<div id = "graph">
+
+</div>
+<div>
+    <p>* Mean of percent of delays represents the average delay of that specific year, and is display on June 30st.</p>
+    <p>** Natural rate of GDP growth represent how much the GDP is supposed to grow in absence of any major economic events.</p>
+</div>
 </body>
 </html>
